@@ -1,0 +1,324 @@
+{
+    "_comment": "DO NOT EDIT: FILE GENERATED AUTOMATICALLY BY PTERODACTYL PANEL - PTERODACTYL.IO",
+    "meta": {
+        "version": "PTDL_v2",
+        "update_url": null
+    },
+    "exported_at": "2025-07-21T06:18:00-04:00",
+    "name": "DayZ Standalone",
+    "author": "business@beamhost.net",
+    "description": "Deploy and manage DayZ Standalone servers with ease using this Pterodactyl egg. Features full support for Steam Workshop mods, custom launch parameters, automated updates, and battle-tested mod folder structure. Ideal for survival communities, PvP, PvE, or custom-modded adventures.\r\nCompatible with both Windows and Linux (via Wine\/Proton).",
+    "features": [
+        "steam_disk_space"
+    ],
+    "docker_images": {
+        "ghcr.io\/parkervcp\/games:dayz": "ghcr.io\/parkervcp\/games:dayz"
+    },
+    "file_denylist": [],
+    "startup": ".\/{{SERVER_BINARY}} -ip=0.0.0.0 -port={{SERVER_PORT}} -queryport={{QUERY_PORT}} -profiles=.\/serverprofile -BEpath=.\/ -config=serverDZ.cfg -mod=\"{{MODIFICATIONS}}\" -serverMod=\"{{SERVERMODS}}\" {{STARTUP_PARAMS}}",
+    "config": {
+        "files": "{\r\n    \"serverDZ.cfg\": {\r\n        \"parser\": \"file\",\r\n        \"find\": {\r\n            \"hostname =\": \"hostname = \\\"{{env.SERVER_HOSTNAME}}\\\";\",\r\n            \"password =\": \"password = \\\"{{env.SERVER_PASSWORD}}\\\";\",\r\n            \"passwordAdmin =\": \"passwordAdmin = \\\"{{env.ADMIN_PASSWORD}}\\\";\",\r\n            \"maxPlayers\": \"maxPlayers = {{env.MAX_PLAYERS}};\",\r\n            \"steamQueryPort\": \"steamQueryPort= {{env.QUERY_PORT}};\",\r\n            \"verifySignatures\": \"verifySignatures = {{env.VERIFY_SIGNATURES}};\",\r\n            \"forceSameBuild\": \"forceSameBuild = {{env.ENFORCE_BUILD}};\",\r\n            \"disableVoN\": \"disableVoN = {{env.DISABLE_VON}};\",\r\n            \"vonCodecQuality\": \"vonCodecQuality = {{env.VON_QUALITY}};\",\r\n            \"disable3rdPerson\": \"disable3rdPerson = {{env.DISABLE_THIRD}};\",\r\n            \"disableCrosshair\": \"disableCrosshair = {{env.DISABLE_CROSSHAIR}};\",\r\n            \"disablePersonalLight\": \"disablePersonalLight = {{env.DISABLE_PERSONAL_LIGHT}};\",\r\n            \"lightingConfig\": \"lightingConfig = {{env.LIGHTING_CONFIG}};\",\r\n            \"serverTimeAcceleration\": \"serverTimeAcceleration = {{env.TIME_MULT}};\",\r\n            \"serverNightTimeAcceleration\": \"serverNightTimeAcceleration = {{env.NIGHT_MULT}};\",\r\n            \"serverTimePersistent\": \"serverTimePersistent = {{env.PERSISTENT_TIME}};\"\r\n        }\r\n    }\r\n}",
+        "startup": "{\r\n    \"done\": \"Mission read.\"\r\n}",
+        "logs": "{}",
+        "stop": "^C"
+    },
+    "scripts": {
+        "installation": {
+            "script": "#!\/usr\/bin\/env bash\r\nset -euo pipefail\r\nIFS=$'\\n\\t'\r\n\r\n#----------------------------------------\r\n# Pterodactyl DayZ (Standalone) Egg Installer\r\n# Author: BeamHost\r\n# Date: 2025\/07\/20\r\n#----------------------------------------\r\n\r\n# --- Color Codes ---\r\nRESET='\\033[0m'\r\nCYAN='\\033[1;36m'\r\nYELLOW='\\033[1;33m'\r\nRED='\\033[1;31m'\r\nGREEN='\\033[1;32m'\r\nBOLD='\\033[1m'\r\n\r\n# --- Emoji Shortcuts ---\r\nINFO_EMOJI=\"\u2139\ufe0f \"\r\nWARN_EMOJI=\"\u26a0\ufe0f \"\r\nERROR_EMOJI=\"\u274c\"\r\nOK_EMOJI=\"\u2705\"\r\nTOOL_EMOJI=\"\ud83d\udee0\ufe0f\"\r\nTIME_EMOJI=\"\ud83d\udd52\"\r\n\r\n# --- Functions for Clean Output ---\r\ninfo()  { echo -e \"${CYAN}${INFO_EMOJI}[$(date +'%H:%M:%S')] [INFO]${RESET} $1\"; }\r\nwarn()  { echo -e \"${YELLOW}${WARN_EMOJI}[$(date +'%H:%M:%S')] [WARN]${RESET} $1\"; }\r\nerror() { echo -e \"${RED}${ERROR_EMOJI}[$(date +'%H:%M:%S')] [ERROR]${RESET} $1\"; }\r\nok()    { echo -e \"${GREEN}${OK_EMOJI}[$(date +'%H:%M:%S')] [OK]${RESET} $1\"; }\r\n\r\n# --- Parameter Validation ---\r\n: \"${STEAM_USER:?STEAM_USER must be set}\"\r\n: \"${STEAM_PASS:?STEAM_PASS must be set}\"\r\n: \"${STEAMCMD_APPID:?STEAMCMD_APPID must be set}\"\r\nSTEAMCMD_EXTRA_FLAGS=${STEAMCMD_EXTRA_FLAGS:-}\r\n\r\nDEFAULT_HOSTNAME=${DEFAULT_HOSTNAME:-\"EXAMPLE NAME\"}\r\nDEFAULT_DESCRIPTION=${DEFAULT_DESCRIPTION:-\"Some description\"}\r\nDEFAULT_PASSWORD=${DEFAULT_PASSWORD:-\"\"}\r\nDEFAULT_PASSWORDADMIN=${DEFAULT_PASSWORDADMIN:-\"\"}\r\nQUERY_PORT=${QUERY_PORT:-2303}\r\n\r\nSERVER_DIR=\/mnt\/server\r\nSTEAMCMD_DIR=$SERVER_DIR\/steamcmd\r\nSTEAMAPPS_DIR=$SERVER_DIR\/steamapps\r\n\r\ninfo \"${TOOL_EMOJI}Starting DayZ install (BeamHost) at $(date -u +'%F %T UTC')\"\r\n\r\n# --- Prepare Directories ---\r\ninfo \"Preparing server directories...\"\r\nmkdir -p \"$STEAMCMD_DIR\" \"$STEAMAPPS_DIR\"\r\n\r\n# --- SteamCMD Install ---\r\nif [[ ! -x \"$STEAMCMD_DIR\/steamcmd.sh\" ]]; then\r\n  info \"Downloading SteamCMD...\"\r\n  cd \/tmp\r\n  curl -sSL -o steamcmd.tar.gz https:\/\/steamcdn-a.akamaihd.net\/client\/installer\/steamcmd_linux.tar.gz\r\n  tar -xzvf steamcmd.tar.gz -C \"$STEAMCMD_DIR\"\r\n  rm -f steamcmd.tar.gz\r\n  ok \"SteamCMD installed to $STEAMCMD_DIR\"\r\nelse\r\n  info \"SteamCMD already present, skipping download.\"\r\nfi\r\n\r\n# --- Fix Permissions & Env ---\r\ninfo \"Setting ownership and environment variables...\"\r\nchown -R root:root \"$SERVER_DIR\"\r\nexport HOME=\"$SERVER_DIR\"\r\n\r\n# --- Install\/Update DayZ server ---\r\ninfo \"Updating\/installing DayZ server with SteamCMD... ${TIME_EMOJI}\"\r\n\"$STEAMCMD_DIR\/steamcmd.sh\" \\\r\n  +force_install_dir \"$SERVER_DIR\" \\\r\n  +login \"$STEAM_USER\" \"$STEAM_PASS\" \\\r\n  +app_update \"$STEAMCMD_APPID\" $STEAMCMD_EXTRA_FLAGS validate \\\r\n  +quit\r\nok \"DayZ server install\/update complete!\"\r\n\r\n# --- 32\/64-bit Steam Libraries ---\r\ninfo \"Setting up Steam libraries...\"\r\nmkdir -p \"$SERVER_DIR\/.steam\/sdk32\" \"$SERVER_DIR\/.steam\/sdk64\"\r\n\r\nif [[ -f \"$STEAMCMD_DIR\/linux32\/steamclient.so\" ]]; then\r\n  cp -v \"$STEAMCMD_DIR\/linux32\/steamclient.so\" \"$SERVER_DIR\/.steam\/sdk32\/steamclient.so\"\r\n  ok \"linux32\/steamclient.so copied!\"\r\nelse\r\n  warn \"$STEAMCMD_DIR\/linux32\/steamclient.so not found!\"\r\nfi\r\n\r\nif [[ -f \"$STEAMCMD_DIR\/linux64\/steamclient.so\" ]]; then\r\n  cp -v \"$STEAMCMD_DIR\/linux64\/steamclient.so\" \"$SERVER_DIR\/.steam\/sdk64\/steamclient.so\"\r\n  ok \"linux64\/steamclient.so copied!\"\r\nelse\r\n  warn \"$STEAMCMD_DIR\/linux64\/steamclient.so not found!\"\r\nfi\r\n\r\n# --- Write Default Config ---\r\ninfo \"Writing default serverDZ.cfg...\"\r\ncat <<EOF > \"$SERVER_DIR\/serverDZ.cfg\"\r\nhostname = \"$DEFAULT_HOSTNAME\";\r\ndescription = \"$DEFAULT_DESCRIPTION\";\r\npassword = \"$DEFAULT_PASSWORD\";\r\npasswordAdmin = \"$DEFAULT_PASSWORDADMIN\";\r\nsteamQueryPort=$QUERY_PORT;\r\n\r\nenableWhitelist = 0;\r\ndisableBanlist = false;\r\ndisablePrioritylist = false;\r\n\r\nmaxPlayers = 60;\r\nverifySignatures = 2;\r\nforceSameBuild = 1;\r\n\r\ndisableVoN = 0;\r\nvonCodecQuality = 20;\r\n\r\ndisable3rdPerson = 0;\r\ndisableCrosshair = 0;\r\n\r\nserverTime = \"SystemTime\";\r\nserverTimeAcceleration = 1;\r\nserverNightTimeAcceleration = 1;\r\nserverTimePersistent = 0;\r\n\r\nguaranteedUpdates = 1;\r\nloginQueueConcurrentPlayers = 5;\r\nloginQueueMaxPlayers = 500;\r\ninstanceId = 1;\r\nstorageAutoFix = 1;\r\n\r\nclass Missions {\r\n  class DayZ {\r\n    template = \"dayzOffline.chernarusplus\";\r\n  };\r\n};\r\n\r\nrespawnTime = 5;\r\nmotd[] = { \"line1\",\"line2\" };\r\nmotdInterval = 1;\r\n\r\ntimeStampFormat = \"Short\";\r\nlogAverageFps = 1;\r\nlogMemory = 1;\r\nlogPlayers = 1;\r\nlogFile = \"server_console.log\";\r\n\r\nadminLogPlayerHitsOnly = 0;\r\nadminLogPlacement = 0;\r\nadminLogBuildActions = 0;\r\nadminLogPlayerList = 0;\r\n\r\ndisableMultiAccountMitigation = false;\r\nenableDebugMonitor = 1;\r\nallowFilePatching = 1;\r\n\r\nsimulatedPlayersBatch = 20;\r\nmultithreadedReplication = 1;\r\nspeedhackDetection = 1;\r\n\r\nnetworkRangeClose = 20;\r\nnetworkRangeNear = 150;\r\nnetworkRangeFar = 1000;\r\nnetworkRangeDistantEffect = 4000;\r\nnetworkObjectBatchLogSlow = 5;\r\nnetworkObjectBatchEnforceBandwidthLimits = 1;\r\nnetworkObjectBatchUseEstimatedBandwidth = 0;\r\nnetworkObjectBatchUseDynamicMaximumBandwidth = 1;\r\nnetworkObjectBatchBandwidthLimit = 0.8;\r\nnetworkObjectBatchCompute = 1000;\r\nnetworkObjectBatchSendCreate = 10;\r\nnetworkObjectBatchSendDelete = 10;\r\n\r\ndefaultVisibility = 1375;\r\ndefaultObjectViewDistance = 1375;\r\n\r\nlightingConfig = 0;\r\ndisablePersonalLight = 1;\r\n\r\ndisableBaseDamage = 0;\r\ndisableContainerDamage = 0;\r\ndisableRespawnDialog = 0;\r\n\r\npingWarning = 200;\r\npingCritical = 250;\r\nMaxPing = 300;\r\nserverFpsWarning = 15;\r\n\r\nshotValidation = 1;\r\nEOF\r\nok \"serverDZ.cfg created!\"\r\n\r\nok \"DayZ installation complete at $(date -u +'%F %T UTC')\"",
+            "container": "ghcr.io\/parkervcp\/installers:debian",
+            "entrypoint": "\/bin\/bash"
+        }
+    },
+    "variables": [
+        {
+            "name": "Steam Username",
+            "description": "Used for installation and updates. \"anonymous\" username can be used for server download, but a real account that owns DayZ is required for mod downloads. For security reasons it is recommended that you create a new Steam account just for your dedicated servers. *This info is not visible to the server owner.*",
+            "env_variable": "STEAM_USER",
+            "default_value": "anonymous",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Steam Password",
+            "description": "Used for installation and updates. Steam Guard MUST be completely TURNED OFF for mod downloads to work. *This info is not visible to the server owner, BUT IS stored in PLAIN TEXT. It is NOT advised to use a personal account; best to use a dummy account.*",
+            "env_variable": "STEAM_PASS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Disable Mod Downloads\/Updates",
+            "description": "If the Steam account does not own the base DayZ game, Steam Workshop mod downloads\/updates will not work. If so, this setting allows disabling of this feature to avoid errors. (1 ON | 0 OFF)",
+            "env_variable": "DISABLE_MOD_UPDATES",
+            "default_value": "0",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Number of SteamCMD Retry Attempts",
+            "description": "How many times SteamCMD should retry downloading a server or mod after a recoverable error. (ie. A particularly large mod download times out)",
+            "env_variable": "STEAMCMD_ATTEMPTS",
+            "default_value": "3",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "required|integer",
+            "field_type": "text"
+        },
+        {
+            "name": "Server Name",
+            "description": "Name of the server that will appear in the server list.",
+            "env_variable": "SERVER_HOSTNAME",
+            "default_value": "DayZ Server",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Max Players",
+            "description": "Maximum number of players allowed to join the server.",
+            "env_variable": "MAX_PLAYERS",
+            "default_value": "64",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|integer|gt:0",
+            "field_type": "text"
+        },
+        {
+            "name": "Server Password",
+            "description": "Password required to join the server. Leave blank to have no password.",
+            "env_variable": "SERVER_PASSWORD",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Admin Password",
+            "description": "Password to log in as an admin on the server.",
+            "env_variable": "ADMIN_PASSWORD",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Automatic Updates",
+            "description": "Quickly checks for any server or mod updates on startup, and updates if necessary.",
+            "env_variable": "UPDATE_SERVER",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Modlist File (Exported from DayZ Launcher)",
+            "description": "Filename for an exported modlist. This file will be parsed for mod installation and loading. Upload your HTML file to the root directory (eg. \/home\/container\/modlist.html). Leave blank to disable loading mods from a modlist.",
+            "env_variable": "MOD_FILE",
+            "default_value": "modlist.html",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Additional Mods",
+            "description": "A semicolon-separated list of mod folders to load from the root directory. Useful for loading manually uploaded mods. Any mods in this list that are in \"@workshopID\" form will also be included in Automatic Updates (if enabled). NO capital letters, spaces, or folders starting with a number! (ex. myMod;@123456789;@987654321;etc;)",
+            "env_variable": "MODIFICATIONS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "Verify Signatures",
+            "description": "Ensures all clients have exactly the same version of mods or addons that the server is running. Otherwise, they will be kicked upon connection. (2 ON | 0 OFF)",
+            "env_variable": "VERIFY_SIGNATURES",
+            "default_value": "2",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|string|in:0,2",
+            "field_type": "text"
+        },
+        {
+            "name": "Enforce Game Version",
+            "description": "When ON, the server will allow the connection only to clients with same the version as the server.",
+            "env_variable": "ENFORCE_BUILD",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Disable VoN",
+            "description": "When ON, will disable Voice over Network (voice chat) in the server.",
+            "env_variable": "DISABLE_VON",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "VoN Quality",
+            "description": "Voice over Network codec quality; the higher the better. (Values 0-30)",
+            "env_variable": "VON_QUALITY",
+            "default_value": "20",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:0,30",
+            "field_type": "text"
+        },
+        {
+            "name": "Disable Third Person",
+            "description": "When ON, will disable third person view while on the server.",
+            "env_variable": "DISABLE_THIRD",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Disable Crosshair",
+            "description": "When ON, will disable the crosshair from being visible while on the server.",
+            "env_variable": "DISABLE_CROSSHAIR",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Disable Personal Light",
+            "description": "When ON, will disable a personal light positioned above all clients during the night time while on the server.",
+            "env_variable": "DISABLE_PERSONAL_LIGHT",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Darker Nights",
+            "description": "When ON, will make nights darker (more accurate nights, but hard to see without a light).",
+            "env_variable": "LIGHTING_CONFIG",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Persistent Time",
+            "description": "The actual server time is saved to storage, so when ON, the next server start will use the saved time value.",
+            "env_variable": "PERSISTENT_TIME",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "Time Multiplier",
+            "description": "This is a time multiplier for in-game time (ie. 12 would move a full 24-hour day in-game 12 times faster, making it last 2 hours \"in real life\"). (Values: 0-24)",
+            "env_variable": "TIME_MULT",
+            "default_value": "12",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|integer|between:0,24",
+            "field_type": "text"
+        },
+        {
+            "name": "Night Multiplier",
+            "description": "This is an additional multiplier to either speed up or slow down nights in-game. It is multiplied with the \"Time Multiplier\" variable to get it's final multiplier for night time speed. (Values: 0.1-64.0)",
+            "env_variable": "NIGHT_MULT",
+            "default_value": "1",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "required|numeric|between:0.1,64",
+            "field_type": "text"
+        },
+        {
+            "name": "[Repair] Make Mod Files Lowercase",
+            "description": "Every mod that is set to be loaded will have its folder and files changed to lowercase (to prevent errors). It is recommended to enable this for one server boot after copying a mod from a Windows machine to the server, or if mods seem to not be loading.",
+            "env_variable": "MODS_LOWERCASE",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "[Repair] Validate Server Files",
+            "description": "Validates all server files when Automatic Updates is ON. Note: This will significantly increase server startup times, so it is recommended to only enable this when needed.",
+            "env_variable": "VALIDATE_SERVER",
+            "default_value": "0",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "boolean",
+            "field_type": "text"
+        },
+        {
+            "name": "[Advanced] Server-Side Only Mods",
+            "description": "Mod folders to be used with the \"-serverMods\" startup option. They only run server-side and are not required by clients if \"Verify Signatures\" is ON. Any mods in this list that are in \"@workshopID\" form will also be included in Automatic Updates (if enabled). NO capital letters, spaces, or folders starting with a number! Each folder must be followed with a semicolon (ex. @123456789;@987654321;etc;)",
+            "env_variable": "SERVERMODS",
+            "default_value": "",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "[Advanced] Extra Startup Parameters",
+            "description": "See https:\/\/community.bistudio.com\/wiki\/DayZ:Server_Configuration#Launch_Parameters for more info on valid flags for this field.",
+            "env_variable": "STARTUP_PARAMS",
+            "default_value": "-doLogs -limitFPS=120",
+            "user_viewable": true,
+            "user_editable": true,
+            "rules": "nullable|string",
+            "field_type": "text"
+        },
+        {
+            "name": "[Advanced] Server Binary",
+            "description": "Cannot currently be changed. Left in case other branches with different executable names are introduced at a later date.",
+            "env_variable": "SERVER_BINARY",
+            "default_value": "DayZServer",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "required|string|in:DayZServer",
+            "field_type": "text"
+        },
+        {
+            "name": "[Advanced] DayZ SA Dedicated Server App ID",
+            "description": "Used for installation and updates. Rarely needs to be changed. Only the Experimental app ID currently works.",
+            "env_variable": "STEAMCMD_APPID",
+            "default_value": "223350",
+            "user_viewable": false,
+            "user_editable": false,
+            "rules": "required|integer",
+            "field_type": "text"
+        },
+        {
+            "name": "Query Port",
+            "description": "REQUIRED Query port",
+            "env_variable": "QUERY_PORT",
+            "default_value": "30840",
+            "user_viewable": true,
+            "user_editable": false,
+            "rules": "required|string|max:5",
+            "field_type": "text"
+        }
+    ]
+}
